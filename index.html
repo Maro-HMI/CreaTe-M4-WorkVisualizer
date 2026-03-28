@@ -1,370 +1,392 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>M4 Course Workload</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M4: Art, Technology and Impact — Workload Chart</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  background: #fff;
+  color: #222;
+  padding: 20px 16px;
+}
+h1 {
+  font-size: 17px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 14px;
+}
+#controls { display: flex; gap: 8px; margin-bottom: 12px; }
+#chart-wrap { overflow-x: auto; }
+#chart { width: 100%; min-width: 480px; max-width: 880px; display: block; }
+#legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+  font-size: 15px;
+}
+#tooltip {
+  display: none;
+  position: fixed;
+  width: 270px;
+  background: #fffef5;
+  border: 2px solid #333;
+  border-radius: 6px;
+  box-shadow: 3px 3px 0 rgba(0,0,0,.15);
+  padding: 10px 14px;
+  font-family: 'Patrick Hand', 'Comic Sans MS', cursive;
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 9999;
+}
+</style>
+</head>
+<body>
+<h1>M4: Art, Technology and Impact</h1>
+<div id="controls"></div>
+<div id="chart-wrap">
+  <svg id="chart"
+    viewBox="0 0 880 520"
+    font-family="Patrick Hand, Comic Sans MS, cursive">
+  </svg>
+</div>
+<div id="legend"></div>
+<div id="tooltip"></div>
+<script>
+const STATE = {"moduleName":"M4: Art, Technology and Impact","numWeeks":11,"startDate":"2026-04-20","courses":[{"id":"c1","name":"Art [&&] Impact","color":"#9B59B6","ecs":5},{"id":"c2","name":"Design for Experience","color":"#E67E22","ecs":3},{"id":"c3","name":"Algorithms","color":"#3498DB","ecs":3},{"id":"c4","name":"Statistics","color":"#27AE60","ecs":3},{"id":"c5","name":"ProfDev","color":"#F06292","ecs":1}],"weeklyTotals":{"c1":[{"sched":10,"home":2},{"sched":3.5,"home":2},{"sched":9,"home":3},{"sched":3.5,"home":3},{"sched":6,"home":2},{"sched":5.5,"home":2},{"sched":6,"home":2},{"sched":10.5,"home":2},{"sched":7,"home":2.5},{"sched":25,"home":3},{"sched":23.5,"home":7}],"c2":[{"sched":4,"home":5},{"sched":4,"home":3},{"sched":1,"home":9},{"sched":2,"home":5},{"sched":4,"home":7},{"sched":4,"home":6},{"sched":3,"home":6},{"sched":1,"home":4},{"sched":2,"home":4},{"sched":1,"home":7},{"sched":0,"home":0}],"c3":[{"sched":7,"home":2},{"sched":7,"home":6.5},{"sched":7,"home":2},{"sched":3.5,"home":4},{"sched":7,"home":3},{"sched":3.5,"home":4},{"sched":7,"home":2},{"sched":3.5,"home":8},{"sched":1,"home":2},{"sched":0,"home":0},{"sched":0,"home":0}],"c4":[{"sched":4,"home":4},{"sched":4,"home":4},{"sched":3.5,"home":4},{"sched":4,"home":9},{"sched":5,"home":3},{"sched":5.5,"home":6},{"sched":6,"home":6},{"sched":3,"home":9},{"sched":1,"home":0},{"sched":0,"home":0},{"sched":0,"home":0}],"c5":[{"sched":2,"home":0},{"sched":3.5,"home":2.5},{"sched":0,"home":1.5},{"sched":3.5,"home":2.5},{"sched":0,"home":3},{"sched":3.5,"home":0},{"sched":0,"home":2},{"sched":0,"home":2},{"sched":2,"home":0},{"sched":0,"home":0},{"sched":0,"home":0}]}};
+/**
+ * Vanilla-JS runtime for the self-contained student-view export.
+ * Loaded via Vite's `?raw` import and embedded verbatim inside a <script> tag.
+ * Assumes a global STATE object is already defined before this script runs.
+ * No `export` — intentionally not an ES module.
+ */
 
-    <script type="text/babel">
-      const { useState, useMemo } = React;
+/* global STATE */
+const { moduleName, numWeeks, startDate, courses, weeklyTotals } = STATE;
 
-      const weeks = ["W1","W2","W3","W4","W5","W6","W7","W8","W9","W10","W11"];
+// ── Chart constants (must match React source) ─────────────────────
+const VB_W = 880, VB_H = 520, ML = 54, MR = 20, MT = 28, MB = 88;
+const CHART_W = VB_W - ML - MR;
+const CHART_H = VB_H - MT - MB;
+const TIP_W = 270, TIP_ROW_H = 24, TIP_HEADER_H = 42, TIP_PAD = 20;
 
-      const courses = [
-        { key: "aaai",    label: "Art [&&] Impact",       color: "#9B59B6" }, // deeper purple
-        { key: "d4e",     label: "Design for Experience", color: "#E67E22" }, // deeper orange
-        { key: "algos",   label: "Algorithms",            color: "#3498DB" }, // deeper blue
-        { key: "stats",   label: "Statistics",            color: "#27AE60" }, // deeper green
-        { key: "profdev", label: "ProfDev",               color: "#F06292" }, // Medium pink
-      ];
+// ── App state ─────────────────────────────────────────────────────
+let viewMode = 'both';       // 'both' | 'sched' | 'home'
+let filteredCourse = null;   // course id string | null
+let hoverWi = null;          // week index (0-based) | null
+let mouseX = 0, mouseY = 0;
 
+// ── Wiggle (verbatim from wiggle.js, minus `export`) ──────────────
+function srand(seed) {
+  let s = (seed | 0) || 1;
+  return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+}
+function wigglePath(x1, y1, x2, y2, amp, steps, rng) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy) || 1;
+  const px = -dy / len, py = dx / len;
+  let d = `M ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const nx = x1 + dx * t + px * amp * (rng() - 0.5) * 2 * Math.sin(t * Math.PI);
+    const ny = y1 + dy * t + py * amp * (rng() - 0.5) * 2 * Math.sin(t * Math.PI);
+    d += ` L ${nx.toFixed(2)} ${ny.toFixed(2)}`;
+  }
+  return d;
+}
+function wigglyRect(x, y, w, h, seed) {
+  if (w <= 0 || h <= 0) return null;
+  const rng = srand(seed * 137 + 41);
+  const amp = 1.4;
+  const steps = Math.max(3, Math.floor(Math.max(w, h) / 8));
+  const strip = p => p.replace(/^M[^L]*L/, 'L');
+  const top    = wigglePath(x,     y,     x + w, y,     amp, steps, rng);
+  const right  = wigglePath(x + w, y,     x + w, y + h, amp, steps, rng);
+  const bottom = wigglePath(x + w, y + h, x,     y + h, amp, steps, rng);
+  const left   = wigglePath(x,     y + h, x,     y,     amp, steps, rng);
+  return top + strip(right) + strip(bottom) + strip(left) + ' Z';
+}
 
-      const raw = {
-        aaai:    { sched:[11,4,9,4,6,6,6,12,8,26,24], home:[2,2,3,3,2,2,2,1,0,2,5] },
-        d4e:     { sched:[4,4,1,2,4,4,3,1,2,1,0],     home:[5,3,10,4,7,6,7,4,2,7,0] },
-        algos:   { sched:[8,8,8,4,8,4,8,4,1,0,0],     home:[2,3,3,3,3,3,4,8,0,0,0] },
-        stats:   { sched:[4,4,4,4,5,6,6,3,1,0,0],     home:[4,4,4,9,3,6,6,8,0,0,0] },
-        profdev: { sched:[2,4,0,4,0,4,0,0,2,0,0],     home:[0,2,0,2,2,2,2,2,0,0,0] },
-      };
+// ── Date helpers (verbatim from dateHelpers.js, minus `export`) ───
+function parseDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+function addDays(date, n) {
+  const d = new Date(date); d.setDate(d.getDate() + n); return d;
+}
+function isoWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+function weekMonday(sd, wi) { return addDays(parseDate(sd), wi * 7); }
 
-      function seededRand(seed) {
-        let s = seed;
-        return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; };
+// ── Derived helpers ───────────────────────────────────────────────
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+function getGroupW() { return CHART_W / numWeeks; }
+function getBarW()   { return getGroupW() * 0.58; }
+function getBarX0()  { return (getGroupW() - getBarW()) / 2; }
+function yPx(h, yMax) { return MT + CHART_H - (h / yMax) * CHART_H; }
+function weekCx(wi)  { return ML + wi * getGroupW() + getGroupW() / 2; }
+function showSched() { return viewMode !== 'home'; }
+function showHome()  { return viewMode !== 'sched'; }
+
+function computeMaxHours() {
+  let max = 0;
+  for (let w = 0; w < numWeeks; w++) {
+    let t = 0;
+    courses.forEach(c => {
+      const wk = weeklyTotals[c.id][w];
+      if (showSched()) t += wk.sched;
+      if (showHome())  t += wk.home;
+    });
+    if (t > max) max = t;
+  }
+  return max;
+}
+
+function computeCourseTotals() {
+  return Object.fromEntries(courses.map(c => [
+    c.id,
+    weeklyTotals[c.id].reduce((s, wk) => s + (showSched() ? wk.sched : 0) + (showHome() ? wk.home : 0), 0),
+  ]));
+}
+
+// ── SVG building ──────────────────────────────────────────────────
+function buildDefs() {
+  return '<defs>' + courses.map(c =>
+    `<pattern id="hatch-${c.id}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+    `<rect width="4" height="4" fill="${c.color}" fill-opacity="0.5"/>` +
+    `<line x1="0" y1="0" x2="0" y2="4" stroke="${c.color}" stroke-width="1.8"/>` +
+    `</pattern>`
+  ).join('') + '</defs>';
+}
+
+function buildStatic(yMax, yStep) {
+  const rng  = srand(42);
+  const axX  = wigglePath(ML, MT + CHART_H, ML + CHART_W, MT + CHART_H, 1.2, 20, rng);
+  const axY  = wigglePath(ML, MT + CHART_H, ML, MT, 1.2, 20, rng);
+  const xArr = `${ML + CHART_W},${MT + CHART_H - 5} ${ML + CHART_W + 8},${MT + CHART_H} ${ML + CHART_W},${MT + CHART_H + 5}`;
+  const yArr = `${ML - 5},${MT} ${ML},${MT - 8} ${ML + 5},${MT}`;
+
+  let html = '';
+  for (let h = 0; h <= yMax; h += yStep) {
+    const py = yPx(h, yMax);
+    html += `<line x1="${ML}" y1="${py}" x2="${ML + CHART_W}" y2="${py}" stroke="#d1d5db" stroke-width="0.8" stroke-dasharray="4 4"/>`;
+    html += `<text x="${ML - 6}" y="${py + 4}" text-anchor="end" font-size="14" fill="#555">${h}h</text>`;
+  }
+  html += `<path d="${axX}" fill="none" stroke="#222" stroke-width="2.8"/>`;
+  html += `<path d="${axY}" fill="none" stroke="#222" stroke-width="2.8"/>`;
+  html += `<polygon points="${xArr}" fill="#222"/>`;
+  html += `<polygon points="${yArr}" fill="#222"/>`;
+  html += `<text x="${ML + CHART_W / 2}" y="${VB_H - 10}" text-anchor="middle" font-size="16" fill="#333" font-weight="600">Module week</text>`;
+  html += `<text x="0" y="0" transform="translate(13,${MT + CHART_H / 2}) rotate(-90)" text-anchor="middle" font-size="16" fill="#333" font-weight="600">hours / week</text>`;
+  return html;
+}
+
+function buildXLabels() {
+  const gw = getGroupW();
+  return Array.from({ length: numWeeks }, (_, wi) => {
+    const bold = hoverWi === wi;
+    return (
+      `<g data-wi="${wi}">` +
+      `<rect x="${ML + wi * gw}" y="${MT + CHART_H}" width="${gw}" height="${MB - 10}" fill="transparent"/>` +
+      `<text x="${weekCx(wi)}" y="${MT + CHART_H + 22}" text-anchor="middle" font-size="14"` +
+      ` fill="${bold ? '#111' : '#444'}" font-weight="${bold ? 700 : 400}">${wi + 1}</text>` +
+      `</g>`
+    );
+  }).join('');
+}
+
+function buildBars(yMax) {
+  const gw = getGroupW(), bw = getBarW(), bx0 = getBarX0();
+  return Array.from({ length: numWeeks }, (_, wi) => {
+    let stackY = MT + CHART_H, groupTotal = 0, segs = '';
+    courses.forEach((c, ci) => {
+      const wk   = weeklyTotals[c.id][wi];
+      const sched = showSched() ? (wk.sched || 0) : 0;
+      const home  = showHome()  ? (wk.home  || 0) : 0;
+      groupTotal += sched + home;
+      const op = (filteredCourse !== null && filteredCourse !== c.id) ? 0.11 : 1;
+      const bx = ML + wi * gw + bx0;
+      if (sched > 0) {
+        const segH = (sched / yMax) * CHART_H;
+        const sy = stackY - segH;
+        const path = wigglyRect(bx, sy, bw, segH, wi * 1000 + ci * 10 + 1);
+        if (path) segs += `<path d="${path}" fill="${c.color}" stroke="${c.color}" stroke-width="1.2" opacity="${op}"/>`;
+        stackY = sy;
       }
-
-      function wigglePath(x1, y1, x2, y2, amp, steps, rng) {
-        const dx = x2 - x1, dy = y2 - y1;
-        const len = Math.sqrt(dx*dx + dy*dy) || 1;
-        const px = -dy/len, py = dx/len;
-        let d = `M ${x1.toFixed(2)} ${y1.toFixed(2)}`;
-        for (let i = 1; i <= steps; i++) {
-          const t = i / steps;
-          const nx = x1 + dx*t + px * amp * (rng()-0.5)*2 * Math.sin(t*Math.PI);
-          const ny = y1 + dy*t + py * amp * (rng()-0.5)*2 * Math.sin(t*Math.PI);
-          d += ` L ${nx.toFixed(2)} ${ny.toFixed(2)}`;
-        }
-        return d;
+      if (home > 0) {
+        const segH = (home / yMax) * CHART_H;
+        const sy = stackY - segH;
+        const path = wigglyRect(bx, sy, bw, segH, wi * 1000 + ci * 10 + 2);
+        if (path) segs += `<path d="${path}" fill="url(#hatch-${c.id})" stroke="${c.color}" stroke-width="1.2" opacity="${op}"/>`;
+        stackY = sy;
       }
+    });
+    // Full-column transparent hit area — data-wi on the <g> covers all children
+    segs += `<rect x="${ML + wi * gw}" y="${MT}" width="${gw}" height="${CHART_H}" fill="transparent"/>`;
+    if (hoverWi === wi && groupTotal > 0) {
+      const labelY = Math.min(stackY - 6, MT + CHART_H - 4);
+      segs += `<text x="${weekCx(wi)}" y="${labelY}" text-anchor="middle" font-size="14" font-weight="700" fill="#111" pointer-events="none">${groupTotal}h</text>`;
+    }
+    return `<g data-wi="${wi}">${segs}</g>`;
+  }).join('');
+}
 
-      function wigglyRect(x, y, w, h, seed) {
-        if (w <= 0 || h <= 0) return null;
-        const rng = seededRand(seed * 137 + 41);
-        const amp = 1.4;
-        const steps = Math.max(3, Math.floor(Math.max(w, h) / 8));
-        const strip = p => p.replace(/^M[^L]*L/, "L");
-        const top    = wigglePath(x,   y,   x+w, y,   amp, steps, rng);
-        const right  = wigglePath(x+w, y,   x+w, y+h, amp, steps, rng);
-        const bottom = wigglePath(x+w, y+h, x,   y+h, amp, steps, rng);
-        const left   = wigglePath(x,   y+h, x,   y,   amp, steps, rng);
-        return top + strip(right) + strip(bottom) + strip(left) + " Z";
-      }
+function renderSVG() {
+  const maxHours = computeMaxHours();
+  const yMax  = Math.ceil((maxHours + 5) / 5) * 5 || 20;
+  const yStep = yMax <= 20 ? 5 : yMax <= 40 ? 10 : 15;
+  document.getElementById('chart').innerHTML =
+    buildDefs() + buildStatic(yMax, yStep) + buildXLabels() + buildBars(yMax);
+}
 
-      function buildWeekData(showHome) {
-        return weeks.map((w, wi) => {
-          const segments = [];
-          let yOffset = 0;
-          courses.forEach(c => {
-            const s = raw[c.key].sched[wi];
-            const h = raw[c.key].home[wi];
-            if (s > 0) {
-              segments.push({ course: c.key, type: "sched", value: s, y: yOffset });
-              yOffset += s;
-            }
-            if (showHome && h > 0) {
-              segments.push({ course: c.key, type: "home", value: h, y: yOffset });
-              yOffset += h;
-            }
-          });
-          return { week: w, total: yOffset, segments };
-        });
-      }
+// ── Tooltip ───────────────────────────────────────────────────────
+function updateTooltip() {
+  const tip = document.getElementById('tooltip');
+  if (hoverWi === null) { tip.style.display = 'none'; return; }
 
-      const phases = [
-        { x1: 0, x2: 2, label: "① Artistic Statement", color: "#c0392b" },
-        { x1: 3, x2: 7, label: "② UX Trials",           color: "#2471a3" },
-        { x1: 8, x2: 10, label: "③ Staging",            color: "#1e8449" },
-      ];
+  const wi = hoverWi;
+  const breakdown = courses.map(c => ({
+    ...c,
+    sched: showSched() ? (weeklyTotals[c.id][wi]?.sched || 0) : 0,
+    home:  showHome()  ? (weeklyTotals[c.id][wi]?.home  || 0) : 0,
+  })).filter(c => c.sched > 0 || c.home > 0);
 
-      function WorkloadChart() {
-        const [hovered, setHovered]         = useState(null);
-        const [legendFilter, setLegendFilter] = useState(null);
-        const [showHome, setShowHome]       = useState(true);
+  const total = breakdown.reduce((s, c) => s + c.sched + c.home, 0);
+  if (!total) { tip.style.display = 'none'; return; }
 
-        const weekData = useMemo(() => buildWeekData(showHome), [showHome]);
-        const maxTotal = useMemo(() => Math.max(...weekData.map(d => d.total)), [weekData]);
+  const wkLabel = `W${wi + 1}${startDate ? ` \u00b7 CW${isoWeek(weekMonday(startDate, wi))}` : ''}`;
 
-        const W = 880, H = 520;
-        const mL = 54, mR = 20, mT = 28, mB = 88;
-        const cW = W - mL - mR;
-        const cH = H - mT - mB;
+  tip.innerHTML =
+    `<div style="font-weight:700;margin-bottom:8px;font-size:15px">${wkLabel} \u2014 ${total}h total</div>` +
+    breakdown.map(c => {
+      const hrs = [c.sched > 0 && `${c.sched}h`, c.home > 0 && `${c.home}h`].filter(Boolean).join(' + ');
+      const dim = filteredCourse !== null && filteredCourse !== c.id;
+      return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:3px;opacity:${dim ? 0.35 : 1}">` +
+        `<span style="width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;display:inline-block"></span>` +
+        `<span style="flex:1;color:#333">${esc(c.name || 'Unnamed')}</span>` +
+        `<span style="color:#555;white-space:nowrap">${hrs}</span>` +
+        `</div>`;
+    }).join('');
 
-        const yMax = Math.ceil(maxTotal / 5) * 5 + 5;
-        const yS = v => cH - (v / yMax) * cH;
-        const hS = v => (v / yMax) * cH;
+  const tipH = TIP_HEADER_H + breakdown.length * TIP_ROW_H + 16;
+  const left = mouseX + TIP_W + TIP_PAD < window.innerWidth  ? mouseX + 16 : mouseX - TIP_W - 12;
+  const top  = mouseY + tipH  + TIP_PAD < window.innerHeight ? mouseY + 8  : mouseY - tipH - 8;
+  tip.style.left    = left + 'px';
+  tip.style.top     = top  + 'px';
+  tip.style.display = 'block';
+}
 
-        const groupW = cW / weeks.length;
-        const barW   = groupW * 0.58;
-        const barOff = (groupW - barW) / 2;
+// ── Legend ────────────────────────────────────────────────────────
+function updateLegend() {
+  const totals = computeCourseTotals();
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  courses.forEach(c => {
+    const total  = totals[c.id] || 0;
+    const active = filteredCourse === c.id;
+    const div    = document.createElement('div');
+    div.style.cssText =
+      'display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 8px;border-radius:5px;' +
+      'user-select:none;transition:opacity 0.15s;' +
+      `border:${active ? `2px solid ${c.color}` : '2px solid transparent'};` +
+      `background:${active ? c.color + '12' : 'transparent'};` +
+      `opacity:${filteredCourse !== null && !active ? 0.4 : 1};`;
+    div.innerHTML =
+      `<svg width="12" height="12"><rect width="12" height="12" fill="${c.color}"/></svg>` +
+      `<svg width="12" height="12"><defs>` +
+      `<pattern id="leg-${c.id}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+      `<rect width="4" height="4" fill="${c.color}" fill-opacity="0.5"/>` +
+      `<line x1="0" y1="0" x2="0" y2="4" stroke="${c.color}" stroke-width="1.8"/>` +
+      `</pattern></defs><rect width="12" height="12" fill="url(#leg-${c.id})" stroke="${c.color}" stroke-width="1"/></svg>` +
+      `<span style="color:#222">${esc(c.name || 'Unnamed')}</span>` +
+      `<span style="color:#666">(${total}h)</span>`;
+    div.addEventListener('click', () => {
+      filteredCourse = active ? null : c.id;
+      update();
+    });
+    el.appendChild(div);
+  });
+}
 
-        const yTicks = [];
-        for (let i = 0; i <= yMax; i += 5) yTicks.push(i);
+// ── Filter buttons ────────────────────────────────────────────────
+function updateButtons() {
+  const el = document.getElementById('controls');
+  el.innerHTML = '';
+  [
+    { mode: 'sched', label: 'Class time only', icon: 'solid' },
+    { mode: 'home',  label: 'Home time only',  icon: 'hatch' },
+  ].forEach(({ mode, label, icon }) => {
+    const active = viewMode === mode;
+    const ic = active ? '#374151' : '#9ca3af';
+    const btn = document.createElement('button');
+    btn.style.cssText =
+      'display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;' +
+      `border:${active ? '1.5px solid #374151' : '1px solid #d1d5db'};` +
+      `border-radius:6px;background:${active ? '#e5e7eb' : '#fff'};` +
+      `cursor:pointer;font-size:13px;font-family:inherit;` +
+      `font-weight:${active ? 600 : 400};color:${active ? '#111827' : '#6b7280'};`;
+    const iconSvg = icon === 'solid'
+      ? `<svg width="12" height="12" style="flex-shrink:0"><rect width="12" height="12" fill="${ic}"/></svg>`
+      : `<svg width="12" height="12" style="flex-shrink:0">` +
+        `<defs><pattern id="btn-hatch-${mode}" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
+        `<rect width="4" height="4" fill="${ic}" fill-opacity="0.5"/>` +
+        `<line x1="0" y1="0" x2="0" y2="4" stroke="${ic}" stroke-width="1.8"/>` +
+        `</pattern></defs><rect width="12" height="12" fill="url(#btn-hatch-${mode})" stroke="${ic}" stroke-width="1"/>` +
+        `</svg>`;
+    btn.innerHTML = iconSvg + label;
+    btn.addEventListener('click', () => {
+      viewMode = viewMode === mode ? 'both' : mode;
+      update();
+    });
+    el.appendChild(btn);
+  });
+}
 
-        const getCourse = key => courses.find(c => c.key === key);
+// ── Full update cycle ─────────────────────────────────────────────
+function update() {
+  renderSVG();
+  updateTooltip();
+  updateLegend();
+  updateButtons();
+}
 
-        return (
-          <div style={{
-            background: "#fff",
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            padding: "28px 16px 40px",
-            fontFamily: "'Patrick Hand', 'Comic Sans MS', cursive",
-          }}>
-            <style>{`@import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');`}</style>
+// ── SVG event delegation (set once — survives innerHTML re-renders) ─
+function getWi(e) {
+  let el = e.target;
+  const svg = document.getElementById('chart');
+  while (el && el !== svg) {
+    if (el.hasAttribute('data-wi')) return +el.getAttribute('data-wi');
+    el = el.parentElement;
+  }
+  return null;
+}
 
-            <div style={{ textAlign: "center", marginBottom: 6 }}>
-              <div style={{ fontSize: 25, fontWeight: 700, color: "#111" }}>
-                M4 Course Workload by Week
-              </div>
-              <div style={{ fontSize: 15, color: "#666", marginTop: 3 }}>
-                {showHome
-                  ? "Solid = scheduled · Hatched = self-managed home time · 412h total"
-                  : "Scheduled contact time only · 312h total"}
-              </div>
-            </div>
+const chartSvg = document.getElementById('chart');
+chartSvg.addEventListener('mousemove', e => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  const wi = getWi(e);
+  if (wi !== hoverWi) { hoverWi = wi; renderSVG(); }
+  updateTooltip();
+});
+chartSvg.addEventListener('mouseleave', () => {
+  hoverWi = null;
+  renderSVG();
+  updateTooltip();
+});
 
-            <div style={{
-              display: "flex", flexWrap: "wrap", alignItems: "center",
-              gap: "6px 14px", justifyContent: "center", margin: "10px 0 6px",
-            }}>
-              {courses.map(c => {
-                const schedTotal = weeks.reduce((s,_,wi) => s + raw[c.key].sched[wi], 0);
-                const homeTotal  = weeks.reduce((s,_,wi) => s + raw[c.key].home[wi], 0);
-                const total = showHome ? schedTotal + homeTotal : schedTotal;
-                const active = !legendFilter || legendFilter === c.key;
-                return (
-                  <div
-                    key={c.key}
-                    onClick={() => setLegendFilter(legendFilter === c.key ? null : c.key)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 6,
-                      cursor: "pointer", opacity: active ? 1 : 0.28,
-                      transition: "opacity 0.15s", userSelect: "none",
-                    }}
-                  >
-                    <svg width={30} height={14}>
-                      <defs>
-                        <pattern id={`ll-${c.key}`} patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-                          <rect width="4" height="4" fill={c.color} fillOpacity="0.5"/>
-                          <line x1="0" y1="0" x2="0" y2="4" stroke={c.color} strokeWidth="1.8"/>
-                        </pattern>
-                      </defs>
-                      <rect x={0} y={1} width={13} height={12} fill={c.color} rx={2}/>
-                      {showHome && <>
-                        <rect x={15} y={1} width={13} height={12} fill={`url(#ll-${c.key})`} stroke={c.color} strokeWidth={1.2} rx={2}/>
-                      </>}
-                      {!showHome && <rect x={15} y={1} width={13} height={12} fill={c.color} opacity={0.25} rx={2}/>}
-                    </svg>
-                    <span style={{ fontSize: 14, color: "#222" }}>
-                      {c.label} <span style={{ color: "#999" }}>({total}h)</span>
-                    </span>
-                  </div>
-                );
-              })}
+update();
 
-              <div style={{ width: 1, height: 24, background: "#ddd", margin: "0 4px" }}/>
-
-              <button
-                onClick={() => setShowHome(v => !v)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 7,
-                  padding: "5px 14px",
-                  border: `2px solid ${showHome ? "#333" : "#bbb"}`,
-                  borderRadius: 6,
-                  background: showHome ? "#fffef0" : "#f5f5f5",
-                  cursor: "pointer",
-                  fontFamily: "'Patrick Hand', cursive",
-                  fontSize: 14,
-                  color: showHome ? "#222" : "#888",
-                  boxShadow: showHome ? "2px 2px 0 #ccc" : "none",
-                  transition: "all 0.15s",
-                  userSelect: "none",
-                }}
-              >
-                <svg width={16} height={14} style={{ flexShrink: 0 }}>
-                  <defs>
-                    <pattern id="btn-hatch" patternUnits="userSpaceOnUse" width="4" height="4" patternTransform="rotate(45)">
-                      <rect width="4" height="4" fill="#555" fillOpacity="0.5"/>
-                      <line x1="0" y1="0" x2="0" y2="4" stroke={showHome ? "#555" : "#bbb"} strokeWidth="1.8"/>
-                    </pattern>
-                  </defs>
-                  <rect x={0} y={1} width={15} height={12} fill="url(#btn-hatch)"
-                    stroke={showHome ? "#555" : "#ccc"} strokeWidth={1.2} rx={2}/>
-                </svg>
-                {showHome ? "Hide home time" : "Show home time"}
-              </button>
-            </div>
-
-            <svg width="100%" viewBox={`0 0 ${880} ${520}`} style={{ maxWidth: 880, overflow: "visible" }}>
-              <defs>
-                {courses.map(c => (
-                  <pattern key={c.key} id={`hatch-${c.key}`}
-                    patternUnits="userSpaceOnUse" width="4" height="4"
-                    patternTransform="rotate(45 0 0)">
-                    <rect width="4" height="4" fill={c.color} fillOpacity="0.5"/>
-                    <line x1="0" y1="0" x2="0" y2="4" stroke={c.color} strokeWidth="1.8"/>
-                  </pattern>
-                ))}
-              </defs>
-
-              {(() => {
-                const W = 880, H = 520;
-                const mL = 54, mR = 20, mT = 28, mB = 88;
-                const cW = W - mL - mR;
-                const cH = H - mT - mB;
-                const yMax = Math.ceil(maxTotal / 5) * 5 + 5;
-                const yS = v => cH - (v / yMax) * cH;
-                const hS = v => (v / yMax) * cH;
-                const groupW = cW / weeks.length;
-                const barW   = groupW * 0.58;
-                const barOff = (groupW - barW) / 2;
-                const yTicks = [];
-                for (let i = 0; i <= yMax; i += 5) yTicks.push(i);
-
-                return (
-                  <>
-                    {yTicks.filter(t => t > 0).map(tick => (
-                      <line key={tick}
-                        x1={mL} y1={mT + yS(tick)} x2={mL + cW} y2={mT + yS(tick)}
-                        stroke="#e8e8e8" strokeWidth={1} strokeDasharray="5 4"
-                      />
-                    ))}
-
-                    {yTicks.map(tick => (
-                      <text key={tick} x={mL - 7} y={mT + yS(tick) + 4}
-                        textAnchor="end" fontSize={13} fill="#666"
-                        fontFamily="'Patrick Hand', cursive"
-                      >{tick}h</text>
-                    ))}
-
-                    <text x={12} y={mT + cH/2} textAnchor="middle" fontSize={14} fill="#555"
-                      fontFamily="'Patrick Hand', cursive"
-                      transform={`rotate(-90, 12, ${mT + cH/2})`}
-                    >hours / week</text>
-
-                    <path d={wigglePath(mL, mT+cH, mL+cW+6, mT+cH, 1.5, 8, seededRand(1))}
-                      stroke="#222" strokeWidth={2.8} fill="none" strokeLinecap="round"/>
-                    <path d={wigglePath(mL, mT+cH+4, mL, mT-4, 1.5, 8, seededRand(2))}
-                      stroke="#222" strokeWidth={2.8} fill="none" strokeLinecap="round"/>
-                    <polygon points={`${mL+cW+6},${mT+cH} ${mL+cW},${mT+cH-4} ${mL+cW},${mT+cH+4}`} fill="#222"/>
-                    <polygon points={`${mL},${mT-4} ${mL-4},${mT+2} ${mL+4},${mT+2}`} fill="#222"/>
-
-                    {weekData.map((wd, wi) => {
-                      const bx = mL + wi * groupW + barOff;
-                      return (
-                        <g key={wi}
-                          onMouseEnter={() => setHovered(wi)}
-                          onMouseLeave={() => setHovered(null)}
-                          style={{ cursor: "default" }}
-                        >
-                          {wd.segments.map((seg, si) => {
-                            const c = getCourse(seg.course);
-                            const segH = hS(seg.value);
-                            const segY = mT + yS(seg.y + seg.value);
-                            const isHome = seg.type === "home";
-                            const faded = legendFilter && legendFilter !== seg.course;
-                            const path = wigglyRect(bx, segY, barW, segH, wi * 20 + si);
-                            if (!path) return null;
-                            return (
-                              <g key={si} opacity={faded ? 0.11 : 1} style={{ transition: "opacity 0.15s" }}>
-                                <path d={path}
-                                  fill={isHome ? `url(#hatch-${seg.course})` : c.color}
-                                  stroke={c.color} strokeWidth={1.3} strokeLinejoin="round"/>
-                              </g>
-                            );
-                          })}
-
-                          {hovered === wi && (
-                            <text x={bx + barW/2} y={mT + yS(wd.total) - 7}
-                              textAnchor="middle" fontSize={14} fontWeight={700} fill="#111"
-                              fontFamily="'Patrick Hand', cursive"
-                            >{wd.total}h</text>
-                          )}
-
-                          <text x={mL + wi*groupW + groupW/2} y={mT + cH + 18}
-                            textAnchor="middle" fontSize={14} fill="#333"
-                            fontFamily="'Patrick Hand', cursive"
-                          >{wd.week}</text>
-                        </g>
-                      );
-                    })}
-
-                    {phases.map((ph, pi) => {
-                      const px1 = mL + ph.x1 * groupW + barOff * 0.5;
-                      const px2 = mL + (ph.x2 + 1) * groupW - barOff * 0.5;
-                      const py  = mT + cH + 40;
-                      const mid = (px1 + px2) / 2;
-                      return (
-                        <g key={pi}>
-                          <line x1={px1} y1={py-4} x2={px1} y2={py+4} stroke={ph.color} strokeWidth={1.8}/>
-                          <line x1={px1} y1={py}   x2={px2} y2={py}   stroke={ph.color} strokeWidth={1.8}/>
-                          <line x1={px2} y1={py-4} x2={px2} y2={py+4} stroke={ph.color} strokeWidth={1.8}/>
-                          <text x={mid} y={py+15} textAnchor="middle" fontSize={12} fill={ph.color}
-                            fontFamily="'Patrick Hand', cursive">{ph.label}</text>
-                        </g>
-                      );
-                    })}
-
-                    <text x={mL + cW/2} y={H - 4} textAnchor="middle" fontSize={14} fill="#666"
-                      fontFamily="'Patrick Hand', cursive"
-                    >Module Week</text>
-                  </>
-                );
-              })()}
-            </svg>
-
-            {hovered !== null && (() => {
-              const wd = weekData[hovered];
-              return (
-                <div style={{
-                  background: "#fffef5", border: "2px solid #333",
-                  borderRadius: 6, padding: "10px 18px", marginTop: 6,
-                  fontSize: 14, boxShadow: "3px 3px 0 #ccc", minWidth: 290,
-                  fontFamily: "'Patrick Hand', cursive",
-                }}>
-                  <strong style={{ fontSize: 16 }}>{wd.week} — {wd.total}h total</strong>
-                  <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: "1fr auto auto", gap: "3px 12px" }}>
-                    {courses.map(c => {
-                      const s = raw[c.key].sched[hovered];
-                      const h = raw[c.key].home[hovered];
-                      if (s + h === 0) return null;
-                      return [
-                        <span key={`l`+c.key} style={{ color: c.color, fontWeight: 600 }}>{c.label}</span>,
-                        <span key={`s`+c.key} style={{ color: "#444", textAlign: "right" }}>{s}h sched</span>,
-                        showHome
-                          ? <span key={`h`+c.key} style={{ color: "#999", textAlign: "right" }}>+{h}h home = {s+h}h</span>
-                          : <span key={`h`+c.key} style={{ color: "#ccc", textAlign: "right" }}>(+{h}h home)</span>,
-                      ];
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            <div style={{ fontSize: 11, color: "#bbb", marginTop: 10 }}>
-              Click legend to filter by course · hover bars for details
-            </div>
-          </div>
-        );
-      }
-
-      ReactDOM.createRoot(document.getElementById('root')).render(<WorkloadChart />);
-    </script>
-  </body>
+</script>
+</body>
 </html>
