@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=770">
 <title>AAAI 2026 — Grade Breakdown</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -318,5 +319,16 @@
   <span><strong>Pass threshold: 5.5 minimum final grade.</strong> No resit option. Partial results do not carry over. All students must also individually pass the AI &amp; Me section of the portfolio.</span>
 </div>
 
+<script>
+  function scaleToFit() {
+    const target = 770;
+    const scale = window.innerWidth / target;
+    document.body.style.transform = `scale(${scale})`;
+    document.body.style.transformOrigin = 'top left';
+    document.body.style.width = target + 'px';
+  }
+  scaleToFit();
+  window.addEventListener('resize', scaleToFit);
+</script>
 </body>
 </html>
