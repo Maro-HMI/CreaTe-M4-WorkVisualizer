@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AAAI 2026 — Grade Breakdown</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #f5f4f0;
+    color: #1a1a1a;
+    padding: 40px 32px;
+    min-height: 100vh;
+  }
+  h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    font-size: 13px;
+    color: #999;
+    margin-bottom: 40px;
+  }
+
+  /* Top-level split */
+  .top-bar {
+    display: flex;
+    height: 48px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+  .top-bar .group-seg {
+    width: 60%;
+    background: #2d6a9f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+  }
+  .top-bar .personal-seg {
+    width: 40%;
+    background: #5a9e6f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+  }
+  .top-labels {
+    display: flex;
+    margin-bottom: 32px;
+  }
+  .top-labels .group-label {
+    width: 60%;
+    text-align: center;
+    font-size: 12px;
+    color: #2d6a9f;
+    font-weight: 600;
+  }
+  .top-labels .personal-label {
+    width: 40%;
+    text-align: center;
+    font-size: 12px;
+    color: #5a9e6f;
+    font-weight: 600;
+  }
+
+  /* Two columns */
+  .columns {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+  .col-group { flex: 0 0 calc(60% - 12px); }
+  .col-personal { flex: 0 0 calc(40% - 12px); }
+
+  .col-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+  .col-group .col-label { color: #2d6a9f; }
+  .col-personal .col-label { color: #5a9e6f; }
+
+  /* Component rows */
+  .component {
+    margin-bottom: 14px;
+  }
+  .comp-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 2px;
+  }
+  .comp-weight {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+  .col-group .comp-weight { color: #2d6a9f; }
+  .col-personal .comp-weight { color: #5a9e6f; }
+  .comp-detail {
+    font-size: 11px;
+    color: #999;
+    line-height: 1.4;
+  }
+
+  /* Modifier row below columns */
+  .mod-row {
+    display: flex;
+    gap: 24px;
+  }
+  .mod-row-group { flex: 0 0 calc(60% - 12px); }
+  .mod-row-personal { flex: 0 0 calc(40% - 12px); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 18px 0;
+  }
+
+  /* Modifier pill section */
+  .modifiers {
+    margin-top: 36px;
+  }
+  .mod-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #999;
+    margin-bottom: 12px;
+  }
+  .mod-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pill {
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .pill-pos { background: #e8f4ec; color: #2e7d46; border: 1px solid #b6dfc2; }
+  .pill-neg { background: #fdecea; color: #b93a2e; border: 1px solid #f5bcb7; }
+  .pill-neu { background: #eef3f9; color: #2d6a9f; border: 1px solid #bcd4ea; }
+  .pill-neg-personal { background: #fef6ec; color: #8c4a10; border: 1px solid #f3c99a; }
+
+  /* Pass threshold banner */
+  .threshold {
+    margin-top: 32px;
+    background: #fff8e6;
+    border: 1px solid #f0d97a;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #7a5a00;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .threshold-icon { font-size: 16px; }
+
+  /* Final grade formula */
+  .formula {
+    margin-top: 32px;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px 20px;
+  }
+  .formula-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #aaa;
+    margin-bottom: 10px;
+  }
+  .formula-eq {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    line-height: 1.7;
+  }
+  .formula-eq .g { color: #2d6a9f; }
+  .formula-eq .p { color: #5a9e6f; }
+  .formula-eq .m { color: #c07a2e; }
+
+  /* AI & Me threshold note */
+  .ame-note {
+    margin-top: 16px;
+    background: #f0f4fa;
+    border-left: 3px solid #2d6a9f;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #555;
+    border-radius: 0 6px 6px 0;
+  }
+</style>
+</head>
+<body>
+
+<h1>Art [&&] Impact 2026</h1>
+<p class="subtitle">Grade composition — how your final grade is built</p>
+
+<!-- Top-level split bar -->
+<div class="top-bar">
+  <div class="group-seg">Group Grade · 60%</div>
+  <div class="personal-seg">Personal Grade · 40%</div>
+</div>
+<div class="top-labels">
+  <div class="group-label">shared by your whole team</div>
+  <div class="personal-label">individual to you</div>
+</div>
+
+<!-- Two columns -->
+<div class="columns">
+
+  <!-- GROUP -->
+  <div class="col-group">
+    <div class="col-label">Group grade components</div>
+
+    <div class="component g1">
+      <div class="comp-name">Phase 1 — Artistic Statement</div>
+      <div class="comp-weight">25% of group grade</div>
+      <div class="comp-detail">Artistic statement · tech track · technique rationale</div>
+    </div>
+
+    <div class="component g2">
+      <div class="comp-name">Phase 2 — UX Trials</div>
+      <div class="comp-weight">25% of group grade</div>
+      <div class="comp-detail">UX trial reports · installation concept · technical decisions</div>
+    </div>
+
+    <div class="component g3">
+      <div class="comp-name">Phase 3 — Portfolio completion</div>
+      <div class="comp-weight">25% of group grade</div>
+      <div class="comp-detail">Notion portfolio · AI &amp; Me · technical decisions</div>
+    </div>
+
+    <div class="component g4">
+      <div class="comp-name">Exhibition Evaluation</div>
+      <div class="comp-weight">25% of group grade</div>
+      <div class="comp-detail">Audience ratings (50%) + instructor/TA ratings (50%)</div>
+    </div>
+  </div>
+
+  <!-- PERSONAL -->
+  <div class="col-personal">
+    <div class="col-label">Personal grade components</div>
+
+    <div class="component p-recap">
+      <div class="comp-name">Lecture Recaps</div>
+      <div class="comp-weight">40% of personal grade</div>
+      <div class="comp-detail">7 recap moments</div>
+    </div>
+
+    <hr class="divider">
+
+    <div class="component p-bc">
+      <div class="comp-name">Buddycheck 1</div>
+      <div class="comp-weight">20% of personal grade</div>
+      <div class="comp-detail">Peer evaluation — end of Phase 1</div>
+    </div>
+
+    <div class="component p-bc2">
+      <div class="comp-name">Buddycheck 2</div>
+      <div class="comp-weight">20% of personal grade</div>
+      <div class="comp-detail">Peer evaluation — end of Phase 2</div>
+    </div>
+
+    <div class="component p-bc3">
+      <div class="comp-name">Buddycheck 3</div>
+      <div class="comp-weight">20% of personal grade</div>
+      <div class="comp-detail">Peer evaluation — end of Phase 3</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modifier row — sits below both columns, split 60/40 to match -->
+<hr class="divider">
+<div class="mod-row">
+  <div class="mod-row-group">
+    <div class="mod-label" style="margin-bottom:8px;">Group grade modifier</div>
+    <span class="pill pill-pos">+1 &nbsp; CCC participation</span>
+  </div>
+  <div class="mod-row-personal">
+    <div class="mod-label" style="margin-bottom:8px;">Personal grade modifiers</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+      <span class="pill pill-neu">+/−1 &nbsp; Exhibition reviews</span>
+      <span class="pill pill-neg-personal">−50% &nbsp; Absent from exhibition / clean-up</span>
+    </div>
+  </div>
+</div>
+
+<!-- Formula -->
+<div class="formula">
+  <div class="formula-title">Final grade formula</div>
+  <div class="formula-eq">
+    Final grade &nbsp;=&nbsp; <span class="g">Group grade × 0.60</span> &nbsp;+&nbsp; <span class="p">Personal grade × 0.40</span><br>
+    <span style="color:#aaa; font-size:12px; font-weight:400">then adjusted by card modifiers</span>
+  </div>
+</div>
+
+<!-- Modifiers -->
+<div class="modifiers">
+  <div class="mod-label">Final grade modifiers</div>
+  <div class="mod-pills">
+    <span class="pill pill-pos">+0.5 &nbsp; Green card</span>
+    <span class="pill pill-neg">−0.5 &nbsp; Yellow card (unresolved)</span>
+  </div>
+</div>
+
+<!-- Pass threshold -->
+<div class="threshold">
+  <span class="threshold-icon">⚠</span>
+  <span><strong>Pass threshold: 5.5 minimum final grade.</strong> No resit option. Partial results do not carry over. All students must also individually pass the AI &amp; Me section of the portfolio.</span>
+</div>
+
+</body>
+</html>
